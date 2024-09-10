@@ -34,19 +34,19 @@ public class CS2_AntiVPN : BasePlugin
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-        
-        if (@event.UserId == null) 
-        { 
-            return HookResult.Continue; 
+
+        if (@event.Userid == null)
+        {
+            return HookResult.Continue;
         }
 
-        var player = @event.UserId;
-        
+        var player = @event.Userid;
+
         string ipAddress = player.IpAddress?.Split(":")[0] ?? string.Empty;
         string playerName = player.PlayerName ?? "Unknown Player";
 
         Logger.LogInformation($"{playerName} Joined from IP: {ipAddress}");
-        
+
         Task.Run(async () =>
         {
             var isVpn = await CheckVpn(ipAddress, player);
@@ -62,7 +62,7 @@ public class CS2_AntiVPN : BasePlugin
     private async Task<bool> CheckVpn(string ipAddress, CCSPlayerController player)
     {
         using var client = new HttpClient();
-        var url = $"http://ip-api.com/json/{ipAddress}?fields=status,mobile,proxy,hosting,query"; 
+        var url = $"http://ip-api.com/json/{ipAddress}?fields=status,mobile,proxy,hosting,query";
 
         try
         {
@@ -75,7 +75,7 @@ public class CS2_AntiVPN : BasePlugin
 
                 var isUsingVpn = jsonResult.GetProperty("proxy").GetBoolean();
                 var isUsingHost = jsonResult.GetProperty("hosting").GetBoolean();
-                
+
                 if (isUsingVpn || isUsingHost)
                 {
                     Logger.LogInformation($"VPN or Hosting Service Detected! Attempting to kick the player...");

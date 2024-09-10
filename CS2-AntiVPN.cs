@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -21,35 +21,44 @@ public class CS2_AntiVPN : BasePlugin
 
     public override void Load(bool hotReload)
     {
-
+        Logger.LogInformation("CS2-AntiVPN Loaded! -> mintyx");
     }
+
     private static int PlayersConnected()
     {
-        return Utilities.GetPlayers().Where(player => player.IsValid && !player.IsHLTV && !player.IsBot).Count();
+        return Utilities.GetPlayers()
+            .Where(player => player.IsValid && !player.IsHLTV && !player.IsBot)
+            .Count();
     }
 
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-        CCSPlayerController? player = @event.Userid;
-        string ipAddress = player!.IpAddress!.Split(":")[0];
-        string playerName = player!.PlayerName;
+        
+        if (@event.UserId == null) 
+        { 
+            return HookResult.Continue; 
+        }
 
-        Logger.LogInformation($"{playerName} Joined {ipAddress}");
+        var player = @event.UserId;
+        
+        string ipAddress = player.IpAddress?.Split(":")[0] ?? string.Empty;
+        string playerName = player.PlayerName ?? "Unknown Player";
+
+        Logger.LogInformation($"{playerName} Joined from IP: {ipAddress}");
+        
         Task.Run(async () =>
         {
-            bool isvpn = await CheckVpn(ipAddress, player);
-            if (isvpn)
+            var isVpn = await CheckVpn(ipAddress, player);
+            if (isVpn)
             {
                 await VpnAction(player);
             }
-
-        }).GetAwaiter().GetResult();
-
-
+        });
 
         return HookResult.Continue;
     }
+
     private async Task<bool> CheckVpn(string ipAddress, CCSPlayerController player)
     {
         using var client = new HttpClient();
@@ -66,9 +75,10 @@ public class CS2_AntiVPN : BasePlugin
 
                 var isUsingVpn = jsonResult.GetProperty("proxy").GetBoolean();
                 var isUsingHost = jsonResult.GetProperty("hosting").GetBoolean();
+                
                 if (isUsingVpn || isUsingHost)
                 {
-                    Logger.LogInformation($"VPN Detected! Attempting to kick the player...");
+                    Logger.LogInformation($"VPN or Hosting Service Detected! Attempting to kick the player...");
                     return true;
                 }
             }
@@ -80,14 +90,14 @@ public class CS2_AntiVPN : BasePlugin
 
         return false;
     }
+
     private Task VpnAction(CCSPlayerController player)
     {
+
         Server.NextFrame(() =>
         {
-
             Server.ExecuteCommand($"kickid {player.UserId} VPN usage is not allowed on this server");
             Logger.LogInformation($"Kicked {player.PlayerName} for using VPN!");
-            
         });
 
         return Task.CompletedTask;

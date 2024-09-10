@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using CounterStrikeSharp.API.Modules.Utils;
 using System.Text.RegularExpressions;
+using System.Text;
+using System.Numerics;
 
 namespace CS2_AntiVPN;
 
@@ -63,6 +65,8 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
 
         string ipAddress = player.IpAddress?.Split(":")[0] ?? string.Empty;
         string playerName = player.PlayerName ?? "Unknown Player";
+        string webhookUrl = Config.WebhookUrl;
+        var playerID = player.SteamID;
 
         Logger.LogInformation($"{playerName} Joined from IP: {ipAddress}");
 
@@ -72,6 +76,7 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
             if (isVpn)
             {
                 await VpnAction(player);
+                await SendDiscordWebhook(webhookUrl, playerName, playerID, ipAddress);
             }
         });
 
@@ -98,6 +103,7 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
                 if (isUsingVpn || isUsingHost)
                 {
                     Logger.LogInformation($"VPN or Hosting Service Detected! Attempting to kick the player...");
+
                     return true;
                 }
             }
@@ -139,5 +145,53 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
         return Task.CompletedTask;
     }
 
+    private static readonly HttpClient client = new HttpClient();
+    public async Task SendDiscordWebhook(string webhookUrl, string playerName, ulong playerID, string ipAddress)
+    {
 
+        using HttpClient? client = new();
+
+        var payload = new
+        {
+            content = "", 
+            embeds = new[]
+                {
+                    new
+                    {
+                        author = new
+                        {
+                            name = "VPN Detected!"
+                        },
+                        description = $"User: [{playerName}](https://steamcommunity.com/profiles/{playerID}) (`{playerID}`)\nIP: [{ipAddress}](http://ip-api.com/json/{ipAddress})",
+                        color = 0xFF0000,
+                        footer = new
+                        {
+                            text = "CS2 - AntiVPN"
+                        },
+                        timestamp = DateTime.UtcNow.ToString("o") 
+                    }
+                }
+        };
+
+        string jsonPayload = JsonSerializer.Serialize(payload);
+
+        using StringContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync(webhookUrl, content);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"[{DateTime.Now}] Webhook sent successfully.");
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[{DateTime.Now}] Failed to send message to Discord: {response.StatusCode}");
+            string responseContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[{DateTime.Now}] Response content: {responseContent}");
+            Console.ResetColor();
+        }
+    }
 }
+    
+

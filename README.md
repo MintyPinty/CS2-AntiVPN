@@ -11,3 +11,13 @@ A plugin that kicks players with a VPN enabled.
    
 ## Requirments
 - [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp/) **tested on v265**
+
+## Configuration
+```json
+{
+  "Kick_Delay": 5, // Delay before kicking the player
+  "Kick_Message": "{Default}[{Red}AntiVPN{Default}] You have been blocked from the server for using a VPN.", // Message before the kick
+  "Kick_Message_Delay": 1, // Delay before outputting the kick message
+  "ConfigVersion": 1 // Do not change
+}
+```

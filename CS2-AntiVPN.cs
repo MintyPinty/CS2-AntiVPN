@@ -1,18 +1,23 @@
 using System.Linq;
+using System.Threading;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Entities;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using CounterStrikeSharp.API.Modules.Entities;
+using CounterStrikeSharp.API.Modules.Utils;
+using System.Text.RegularExpressions;
 
 namespace CS2_AntiVPN;
 
-public class CS2_AntiVPN : BasePlugin
+public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
 {
-    public override string ModuleName => "CS2-AntiVPN";
 
-    public override string ModuleVersion => "1.0";
+    public required CS2_AntiVPN_Config Config { get; set; }
+
+    public override string ModuleName => "CS2-AntiVPN";
+    public override string ModuleVersion => "1.3";
     public override string ModuleAuthor => "mintyx";
     public override string ModuleDescription => "Kicks Players with a VPN enabled.";
 
@@ -23,7 +28,21 @@ public class CS2_AntiVPN : BasePlugin
     {
         Logger.LogInformation("CS2-AntiVPN Loaded! -> mintyx");
     }
+    public void OnConfigParsed(CS2_AntiVPN_Config config)
+    {
+        Config = config;
+    }
+    private string ReplaceMessageColors(string input)
+    {
+        string[] ColorAlphabet = { "{GREEN}", "{BLUE}", "{RED}", "{SILVER}", "{MAGENTA}", "{GOLD}", "{DEFAULT}", "{LIGHTBLUE}", "{LIGHTPURPLE}", "{LIGHTRED}", "{LIGHTYELLOW}", "{YELLOW}", "{GREY}", "{LIME}", "{OLIVE}", "{ORANGE}", "{DARKRED}", "{DARKBLUE}", "{BLUEGREY}", "{PURPLE}" };
+        string[] ColorChar = { $"{ChatColors.Green}", $"{ChatColors.Blue}", $"{ChatColors.Red}", $"{ChatColors.Silver}", $"{ChatColors.Magenta}", $"{ChatColors.Gold}", $"{ChatColors.Default}", $"{ChatColors.LightBlue}", $"{ChatColors.LightPurple}", $"{ChatColors.LightRed}", $"{ChatColors.LightYellow}", $"{ChatColors.Yellow}", $"{ChatColors.Grey}", $"{ChatColors.Lime}", $"{ChatColors.Olive}", $"{ChatColors.Orange}", $"{ChatColors.DarkRed}", $"{ChatColors.DarkBlue}", $"{ChatColors.BlueGrey}", $"{ChatColors.Purple}" };
 
+        for (int z = 0; z < ColorAlphabet.Length; z++)
+        {
+            input = Regex.Replace(input, Regex.Escape(ColorAlphabet[z]), ColorChar[z], RegexOptions.IgnoreCase);
+        }
+        return input;
+    }
     private static int PlayersConnected()
     {
         return Utilities.GetPlayers()
@@ -90,9 +109,26 @@ public class CS2_AntiVPN : BasePlugin
 
         return false;
     }
-
     private Task VpnAction(CCSPlayerController player)
     {
+        Server.NextFrame(() =>
+        {
+            player.ChangeTeam(CounterStrikeSharp.API.Modules.Utils.CsTeam.Spectator);
+        });
+
+        Thread.Sleep(Config.Kick_Message_Delay * 1000);
+        string Kick_Message = ReplaceMessageColors(Config.Kick_Message);
+
+        Server.NextFrame(() =>
+        {
+            player.PrintToChat($"{Kick_Message}");
+        });
+        Server.NextFrame(() =>
+        {
+            player.PrintToCenterAlert($"{Kick_Message}");
+        });
+
+        Thread.Sleep((Config.KickDelay - Config.Kick_Message_Delay) * 1000);
 
         Server.NextFrame(() =>
         {
@@ -102,4 +138,6 @@ public class CS2_AntiVPN : BasePlugin
 
         return Task.CompletedTask;
     }
+
+
 }

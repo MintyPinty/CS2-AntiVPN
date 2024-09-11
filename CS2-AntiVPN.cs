@@ -19,7 +19,7 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
     public required CS2_AntiVPN_Config Config { get; set; }
 
     public override string ModuleName => "CS2-AntiVPN";
-    public override string ModuleVersion => "1.3";
+    public override string ModuleVersion => "1.4";
     public override string ModuleAuthor => "mintyx";
     public override string ModuleDescription => "Kicks Players with a VPN enabled.";
 
@@ -99,6 +99,7 @@ public class CS2_AntiVPN : BasePlugin, IPluginConfig<CS2_AntiVPN_Config>
 
                 var isUsingVpn = jsonResult.GetProperty("proxy").GetBoolean();
                 var isUsingHost = jsonResult.GetProperty("hosting").GetBoolean();
+                Logger.LogInformation($"Proxy: {isUsingVpn} | Hosting: {isUsingHost}");
 
                 if (isUsingVpn || isUsingHost)
                 {
